@@ -1,0 +1,26 @@
+
+--Actualizar la Base de dato
+update wf_parametros set
+ prt_valor = replace(prt_valor,'EMT_TEMPLARIS_PROD','EMT_TEMPLARIS_DESARROLLO')
+where prt_valor like '%EMT_TEMPLARIS_PROD%'
+
+
+
+--Actualizar el Servidor web
+update wf_parametros set
+ prt_valor = 'http://192.168.1.19/templaris_desarrollo'
+where prt_nombre_corto = 'PATHWEB'
+
+
+
+--Actualizar el Servidor de BD
+update wf_parametros set
+ prt_valor = '192.168.0.116\'
+where prt_nombre_corto = 'SERVER BD'
+
+
+
+--Ubicación de documento de refinanciamiento
+update wf_parametros set
+ prt_valor = 'C:\inetpub\wwwroot\EMT_TEMPLARIS_DESARROLLO\Operacional\MoraAvanzada\ng_propuestas\REFINANCIAMIENTO.rtf'
+where prt_nombre_corto = 'ExpNgProp'
