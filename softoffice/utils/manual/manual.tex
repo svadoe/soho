@@ -1,0 +1,169 @@
+\writestatus{loading}{ConTeXt Verbatim Macros / Pretty SQL Verbatim}
+\setupwhitespace[medium]
+\starttext
+\startstandardmakeup
+  \midaligned{How to make a document.}
+  \midaligned{by}
+  \midaligned{Sergio Vado Espinoza}
+\stopstandardmakeup
+\completecontent
+\chapter{Introducción}
+El presente documento describe como utilizar el script adjunto para realizar análisis de un cliente específico.
+\chapter{Script}
+El script toma como parámetro el número del cliente que corresponde al campo {\sl per_cli} de la tabla personas.
+
+%\setupcolors[state=start]
+\setuptyping[option=color]
+\definetyping[SQL][option=commands]
+\startSQL
+DECLARE @per_cli VARCHAR(20) = '96000000092037621'
+\stopSQL
+
+Se crean las siguientes tablas temporales conteniendo los datos específicos de la persona declarada al inicio del script, cada una de estas tablas temporales tiene los mismos campos que la tabla de la cual se generan.
+
+Las tablas temporales son las siguientes:
+
+\startitemize[1,packed,broad]
+\item \#personas
+\item \#per_doc
+\item \#per_tel
+\item \#per_dom
+\item \#per_atributos
+\item \#cuentas
+\item \#cmb_cta
+\item \#wf_sit_objetos
+\item \#wf_cmb_objetos
+\item \#movimientos
+\item \#acciones
+\item \#wf_eventos
+\item \#prestamos
+\item \#prestamos_cuotas
+\item \#tarjetas
+\item \#tarjetas_venc
+\item \#reglas_x_cuentas
+\item \#wf_reglas
+\item \#add_reglas_performance
+\stopitemize
+
+\section{\#personas}
+
+\startitemize[1,packed,broad]
+\item Descripción: datos generales de la persona.
+\item Tipificación de consultas del usuario: error en datos de la persona
+\stopitemize
+
+\section{\#per_doc}
+\startitemize[1,packed,broad]
+\item Descripción: datos de los documentos de identificación de la persona como el DNI
+\item Tipificación de consultas del usuario: error en documento de la persona 
+\stopitemize
+
+
+\section{\#per_tel}
+\startitemize[1,packed,broad]
+\item Descripción: datos de teléfonos de la persona.
+\item Tipificación de consultas del usuario: error en teléfono de la persona 
+\stopitemize
+
+
+\section{\#per_dom}
+\startitemize[1,packed,broad]
+\item Descripción: datos de domicilios de la persona.
+\item Tipificación de consultas del usuario: error en el domicilio de la persona
+\stopitemize
+
+
+\section{\#per_atributos}
+\startitemize[1,packed,broad]
+\item Descripción: datos de atributos extras o customs de la persona.
+\item Tipificación de consultas del usuario: error en atributo de la persona
+\stopitemize
+
+
+\section{\#cuentas}
+\startitemize[1,packed,broad]
+\item Descripción: datos las cuentas de la persona.
+\item Tipificación de consultas del usuario: error saldos y fechas vencimientos de la cuenta
+\stopitemize
+
+
+\section{\#cmb_cta}
+\startitemize[1,packed,broad]
+\item Descripción: bitácora de cambios de la cuenta.
+\item Tipificación de consultas del usuario: cuáles fueron los cambios en la cuenta.
+\stopitemize
+
+
+\section{\#wf_sit_objetos}
+\startitemize[1,packed,broad]
+\item Descripción: datos del estado, escenario, estrategia, usuario responsable de la cuenta. 
+\item Tipificación de consultas del usuario: cuál es el es estado actual de la cuenta. 
+\stopitemize
+
+\section{\#wf_cmb_objetos}
+\startitemize[1,packed,broad]
+\item Descripción: bitácora de cambios de la cuenta con respecto a estado, escenario, estrategia; 
+\stopitemize
+
+
+\section{\#movimientos}
+\startitemize[1,packed,broad]
+\item Descripción: bitácora de movimientos de la cuenta.
+\item Tipificación de consultas del usuario: se verifican movimientos tales como los cobros.
+\stopitemize
+
+\section{\#acciones}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar si las acciones o reglas creadas por el usuario generaron registros en esta tabla. 
+\stopitemize
+
+\section{\#wf_eventos}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: bitácora de las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#prestamos}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#prestamos_cuotas}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#tarjetas}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#tarjetas_venc}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#reglas_x_cuentas}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#wf_reglas}
+\startitemize[1,packed,broad]
+\item Descripción: Guarda las acciones que se generan sobre las cuentas como resultado de las reglas establecidas.
+\item Tipificación de consultas del usuario: verificar las reglas y acciones o consecuentes que se ejecutanron sobre una cuenta 
+\stopitemize
+
+\section{\#add_reglas_performance}
+
+\stoptext
+
+
+
+
