@@ -210,7 +210,9 @@ BEGIN
 					AND cta_baja_fecha is NULL
 				ORDER BY 
 					cta_fec_vto
-	
+--SELECT * FROM wf_sit_objetos WHERE sob_etg IS NULL	
+--SELECT DISTINCT eve_evento FROM wf_eventos WHERE eve_evento > 300
+--SELECT * FROM cuentas WHERE cta_fec_vto IS NOT  NULL	
 				IF @v_acc_etg IS NULL 
 				BEGIN
 					SELECT TOP 1
@@ -342,3 +344,9 @@ END
 INSERT wf_print_out SELECT @prc_nombre_corto,GETDATE(),@v_fec_proceso,'F','PROCESO EVALUACION DE EVENTOS - FINALIZADO ' + CONVERT(CHAR(20),GETDATE(),113), @v_usu_id_in, @v_cod_ret,@cat_id
 
 GO
+
+
+
+
+
+
