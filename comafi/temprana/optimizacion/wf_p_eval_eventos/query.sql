@@ -1,6 +1,80 @@
+CREATE index ind_evp_sob ON wf_eventos_proceso (evp_sob)
+CREATE index ind_evp_evento ON wf_eventos_proceso (evp_evento)
+CREATE index ind_evp_sob_eve ON wf_eventos_proceso (evp_sob, evp_evento)
 --[
---DELETE FROM acciones WHERE acc_fec_hora >= '20200427'
+SET NOCOUNT ON
+
 DECLARE @fec_ini DATETIME = GETDATE()
+
+DELETE FROM acciones WHERE acc_fec_hora >= '20200427'
+
+
+SELECT cuentas.* INTO #cuentas FROM cuentas INNER JOIN wf_eventos_proceso ON cta_id = evp_sob
+CREATE index ind_aux_cta_id ON #cuentas (cta_id)
+CREATE index ind_aux_cta_per ON #cuentas (cta_per)
+CREATE index ind_aux_cta_per_id ON #cuentas (cta_per, cta_id, cta_fec_vto)
+
+
+/* INICIO tabla ultima_accion_x_tipo */
+--DROP TABLE ultima_accion_x_tipo
+CREATE TABLE #ultima_accion_x_tipo (
+  acc_per INTEGER,
+  acc_cta INTEGER,
+  acc_tac INTEGER,
+  tac_tipo_vinculo VARCHAR(1),
+  acc_fec_hora DATETIME
+) 
+
+INSERT INTO #ultima_accion_x_tipo (acc_per,acc_cta,acc_tac,tac_tipo_vinculo, acc_fec_hora)
+SELECT
+  0 [acc_per],
+  acc_cta,
+  acc_tac,
+  tac_tipo_vinculo,
+  MAX(acc_fec_hora)
+FROM
+  acciones
+  INNER JOIN #cuentas ON acc_cta = cta_id
+  INNER JOIN tipos_acciones ON acc_tac = tac_id
+WHERE
+  cta_cat = 2
+  AND acc_cta > 0
+  AND acc_per = 0
+  AND cta_baja_fecha IS NULL
+  AND acc_baja_fecha IS NULL
+GROUP BY
+  acc_per,
+  acc_cta,
+  acc_tac,
+  tac_tipo_vinculo
+UNION
+SELECT
+  acc_per,
+  0 [acc_cta],
+  acc_tac,
+  tac_tipo_vinculo,
+  MAX(acc_fec_hora)
+FROM
+  acciones
+  INNER JOIN #cuentas ON acc_per = cta_per
+  INNER JOIN tipos_acciones ON acc_tac = tac_id
+WHERE
+  cta_cat = 2
+  AND acc_cta = 0
+  AND acc_per > 0
+  AND cta_baja_fecha IS NULL
+  AND acc_baja_fecha IS NULL
+GROUP BY
+  acc_per,
+  acc_cta,
+  acc_tac,
+  tac_tipo_vinculo
+
+CREATE index ind_acc_ult_per ON #ultima_accion_x_tipo (acc_per)
+CREATE index ind_acc_ult_cta ON #ultima_accion_x_tipo (acc_cta)
+
+/* FIN tabla ultima_accion_x_tipo */
+
 DECLARE	@v_fec_proceso DATETIME 
 DECLARE	@v_usu_id_in   INT
 DECLARE	@cat_id	       INT
@@ -48,10 +122,10 @@ CREATE TABLE #acciones(
 ) 
 
 DECLARE @v_usu_id INTEGER = 1
---SELECT @max_acc_id
+
 INSERT INTO #acciones
 SELECT DISTINCT
-  0, -- ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) + @max_acc_id AS acc_id,
+  0,
   CASE WHEN tac_tipo_vinculo = 'P' THEN cta_per ELSE 0 END AS acc_per,
   CASE WHEN tac_tipo_vinculo <> 'P' THEN evp_sob ELSE 0 END AS acc_cta,
   @v_fec_proceso       AS acc_fec_hora,
@@ -62,7 +136,7 @@ SELECT DISTINCT
   NULL                 AS acc_res_fec_hora,
 	@v_usu_id            AS acc_usu,
 	''                   AS acc_obs_resp,
-	NULL          AS acc_fec_vto,
+	NULL                 AS acc_fec_vto,
 	0                    AS acc_etg,
 	0                    AS acc_esc,
 	GETDATE()            AS acc_fec_esc,
@@ -73,7 +147,7 @@ SELECT DISTINCT
 	0                    AS acc_deuda_venc,
 	0                    AS acc_eve,
 	0                    AS acc_mov,
-	0            AS acc_costo,
+	0                    AS acc_costo,
 	GETDATE()            AS acc_alta_fecha,
 	NULL                 AS acc_modi_fecha,
 	NULL                 AS acc_baja_fecha,
@@ -84,7 +158,7 @@ SELECT DISTINCT
   NULL                 AS v_fec_acc
 FROM
   wf_eventos_proceso
-  INNER JOIN cuentas ON evp_sob = cta_id
+  INNER JOIN #cuentas ON evp_sob = cta_id
   INNER JOIN tipos_acciones ON evp_evento = tac_id
 WHERE
   cta_cat = @cat_id
@@ -107,14 +181,13 @@ SET
   a.acc_eve     = evp_id
 FROM
   #acciones a
-  INNER JOIN cuentas b ON a.acc_per = b.cta_per
+  INNER JOIN #cuentas b ON a.acc_per = b.cta_per
   INNER JOIN wf_eventos_proceso c ON b.cta_id = c.evp_sob
   INNER JOIN tipos_acciones d ON a.acc_tac = d.tac_id 
 WHERE
   a.acc_tac = c.evp_evento
   AND a.acc_per > 0
   AND a.acc_cta = 0
-
 
 /* actualiza campos a nivel de cuentas */
 UPDATE
@@ -125,7 +198,7 @@ SET
   a.acc_eve     = evp_id
 FROM
   #acciones a
-  INNER JOIN cuentas b ON a.acc_cta = b.cta_id
+  INNER JOIN #cuentas b ON a.acc_cta = b.cta_id
   INNER JOIN wf_eventos_proceso c ON b.cta_id = c.evp_sob
   INNER JOIN tipos_acciones d ON a.acc_tac = d.tac_id 
 WHERE
@@ -174,7 +247,7 @@ SET
   a.v_fec_acc = b.acc_fec_hora
 FROM
   #acciones a
-  INNER JOIN ultima_accion_x_tipo b ON a.acc_per = b.acc_per
+  INNER JOIN #ultima_accion_x_tipo b ON a.acc_per = b.acc_per
 WHERE
   a.acc_per > 0
   AND a.acc_cta = 0
@@ -190,7 +263,7 @@ SET
   a.v_fec_acc = b.acc_fec_hora
 FROM
   #acciones a
-  INNER JOIN ultima_accion_x_tipo b ON a.acc_cta = b.acc_cta
+  INNER JOIN #ultima_accion_x_tipo b ON a.acc_cta = b.acc_cta
 WHERE
   a.acc_cta > 0
   AND a.acc_per = 0
@@ -206,44 +279,93 @@ WHERE
   v_fec_acc IS NOT NULL
   AND CONVERT(DATETIME,CONVERT(VARCHAR,v_fec_acc,112)) + evp_dias_min > @v_fec_proceso
 
-
 /* se establecen las fechas, escenarios, estrategias y estados a nivel de persona */
-UPDATE
-  a
-SET
-  a.acc_fec_vto = b.cta_fec_vto,
-  a.acc_esc     = c.sob_esc,
-  a.acc_etg     = c.sob_etg,
-  a.acc_est     = c.sob_est,
-  a.acc_fec_esc = c.sob_fec_esc,
-  a.acc_fec_est = c.sob_fec_est
+;
+WITH cte AS (
+SELECT
+  a.acc_per          AS acc_per,
+  a.acc_tac          AS acc_tac,
+  MIN(b.cta_fec_vto) AS cta_fec_vto,
+  c.sob_esc          AS sob_esc,
+  c.sob_etg          AS sob_etg,
+  c.sob_est          AS sob_est,
+  c.sob_fec_esc      AS sob_fec_esc,
+  c.sob_fec_est      AS sob_fec_est
 FROM
   #acciones a
-  INNER JOIN cuentas b ON a.acc_per = b.cta_per
+  INNER JOIN #cuentas b ON a.acc_per = b.cta_per
   INNER JOIN wf_sit_objetos c ON b.cta_id = c.sob_id
 WHERE
   a.acc_per > 0
   AND a.acc_cta = 0
   AND b.cta_fec_vto IS NOT NULL
-
-/* se establecen las fechas, escenarios, estrategias y estados a nivel de cuenta */
+GROUP BY
+  a.acc_per,
+  a.acc_tac,
+  c.sob_esc,
+  c.sob_etg,
+  c.sob_est,
+  c.sob_fec_esc,
+  c.sob_fec_est
+)
 UPDATE
   a
 SET
-  a.acc_fec_vto = b.cta_fec_vto,
-  a.acc_esc     = c.sob_esc,
-  a.acc_etg     = c.sob_etg,
-  a.acc_est     = c.sob_est,
-  a.acc_fec_esc = c.sob_fec_esc,
-  a.acc_fec_est = c.sob_fec_est
+  a.acc_fec_vto = cte.cta_fec_vto,
+  a.acc_esc     = cte.sob_esc,
+  a.acc_etg     = cte.sob_etg,
+  a.acc_est     = cte.sob_est,
+  a.acc_fec_esc = cte.sob_fec_esc,
+  a.acc_fec_est = cte.sob_fec_est
 FROM
   #acciones a
-  INNER JOIN cuentas b ON a.acc_cta = b.cta_id
+  INNER JOIN cte ON a.acc_per = cte.acc_per AND a.acc_tac = cte.acc_tac
+
+--SELECT distinct eve_evento FROM wf_eventos WHERE eve_evento > 500
+--SELECT DISTINCT 'wf_eval_eventos_'+CAST(exr_evento AS VARCHAR) FROM wf_eventos_x_reg WHERE exr_evento > 500 AND exr_baja_fecha IS NULL
+/* se establecen las fechas, escenarios, estrategias y estados a nivel de cuenta */
+;
+WITH cte AS (
+SELECT
+  a.acc_cta          AS acc_cta,
+  a.acc_tac          AS acc_tac,
+  b.cta_fec_vto      AS cta_fec_vto,
+  c.sob_esc          AS sob_esc,
+  c.sob_etg          AS sob_etg,
+  c.sob_est          AS sob_est,
+  c.sob_fec_esc      AS sob_fec_esc,
+  c.sob_fec_est      AS sob_fec_est
+FROM
+  #acciones a
+  INNER JOIN #cuentas b ON a.acc_cta = b.cta_id
   INNER JOIN wf_sit_objetos c ON b.cta_id = c.sob_id
 WHERE
   a.acc_per = 0
   AND a.acc_cta > 0
---  AND b.cta_fec_vto IS NOT NULL
+  AND b.cta_fec_vto IS NULL
+GROUP BY
+  a.acc_cta,
+  a.acc_tac,
+  b.cta_fec_vto,
+  c.sob_esc,
+  c.sob_etg,
+  c.sob_est,
+  c.sob_fec_esc,
+  c.sob_fec_est
+)
+UPDATE
+  a
+SET
+  a.acc_fec_vto = cte.cta_fec_vto,
+  a.acc_esc     = cte.sob_esc,
+  a.acc_etg     = cte.sob_etg,
+  a.acc_est     = cte.sob_est,
+  a.acc_fec_esc = cte.sob_fec_esc,
+  a.acc_fec_est = cte.sob_fec_est
+FROM
+  #acciones a
+  INNER JOIN cte ON a.acc_cta = cte.acc_cta AND a.acc_tac = cte.acc_tac
+
 
 /* se establece deuda vencida y deuda a vencer a nivel de persona*/
 UPDATE
@@ -258,6 +380,7 @@ WHERE
   a.acc_per     > 0
   AND a.acc_cta = 0
 
+
 /* se establece deuda vencida y deuda a vencer a nivel de cuenta*/
 /* las deudas a nivel de cuenta se calculan como a nivel de persona */
 UPDATE
@@ -267,36 +390,66 @@ SET
   a.acc_deuda_a_venc = c.per_deuda_a_venc
 FROM
   #acciones a
-  INNER JOIN cuentas b ON a.acc_cta = b.cta_id
+  INNER JOIN #cuentas b ON a.acc_cta = b.cta_id
   INNER JOIN persona_deuda c ON b.cta_per = c.per_id
 WHERE
   a.acc_per     = 0
   AND a.acc_cta > 0
 
 /* actualiza acc_id */
-
 DECLARE @max_acc_id INTEGER = (SELECT MAX(acc_id) FROM acciones)
 
 UPDATE #acciones
  SET @max_acc_id = acc_id = @max_acc_id + 1
 WHERE  acc_id = 0--IS NULL
 
---SELECT acc_deuda_venc, acc_deuda_a_venc, evp_dias_min, v_fec_acc, acc_per, acc_cta, acc_fec_vto, acc_etg, acc_esc, acc_fec_esc, acc_est, acc_fec_est FROM #acciones --WHERE acc_tac BETWEEN 1 AND 300 ORDER BY acc_cta
---SELECT * FROM #acciones WHERE acc_per = 1509
---SELECT acc_per, acc_tac FROM #acciones WHERE acc_per > 0 GROUP BY acc_per,acc_tac ORDER BY 2
---SELECT acc_per, acc_tac FROM acciones WHERE acc_per > 0 AND acc_fec_hora >= '20200427' GROUP BY acc_per,acc_tac ORDER BY 2
---SELECT acc_cta, acc_tac FROM #acciones WHERE acc_cta > 0 GROUP BY acc_cta,acc_tac ORDER BY 2
---SELECT acc_cta, acc_tac FROM acciones WHERE acc_cta > 0 AND acc_fec_hora >= '20200427' GROUP BY acc_cta,acc_tac ORDER BY 2
+SET NOCOUNT off 
+INSERT INTO
+  acciones (
+    acc_id         , acc_per     , acc_cta      , acc_fec_hora     , acc_tac        , 
+    acc_obs        , acc_estado  , acc_trp      , acc_res_fec_hora , acc_usu        , 
+    acc_obs_resp   , acc_fec_vto , acc_etg      , acc_esc          , acc_fec_esc    , 
+    acc_est        , acc_fec_est , acc_usu_resp , acc_deuda_a_venc , acc_deuda_venc , 
+    acc_eve        , acc_mov     , acc_costo    , acc_alta_fecha   , acc_modi_fecha , 
+    acc_baja_fecha , acc_usu_id  , acc_filler
+  )
+SELECT
+  acc_id         , acc_per     , acc_cta      , acc_fec_hora     , acc_tac        , 
+  acc_obs        , acc_estado  , acc_trp      , acc_res_fec_hora , acc_usu        , 
+  acc_obs_resp   , acc_fec_vto , acc_etg      , acc_esc          , acc_fec_esc    , 
+  acc_est        , acc_fec_est , acc_usu_resp , acc_deuda_a_venc , acc_deuda_venc , 
+  acc_eve        , acc_mov     , acc_costo    , acc_alta_fecha   , acc_modi_fecha , 
+  acc_baja_fecha , acc_usu_id  , acc_filler
+FROM
+  #acciones
+ORDER BY acc_id
 
 
-select acc_per, acc_cta, acc_tac, acc_estado, acc_etg, acc_esc, acc_est, acc_fec_esc, acc_fec_est, acc_deuda_venc, acc_deuda_a_venc, acc_eve from #acciones where acc_fec_hora >= '20200427' order by acc_per, acc_cta, acc_tac, acc_estado, acc_etg, acc_esc, acc_est, acc_fec_esc, acc_fec_est, acc_deuda_venc, acc_deuda_a_venc, acc_eve
+/* actualiza idn numeracion */
+SELECT @max_acc_id = MAX(acc_id) FROM acciones 
+UPDATE id_numeracion SET idn_ultimo_id = @max_acc_id WHERE idn_tabla = 'acciones'
 
+DROP TABLE #cuentas
+DROP TABLE #ultima_accion_x_tipo
 DROP TABLE #acciones
+
+DECLARE @fec_fin DATETIME = GETDATE()
+SELECT datediff(second, @fec_fin, @fec_ini)
+
 --]
 
 
---[-- máxima acción por tipo
---CREATE index ind_acc_fec_hora ON acciones (acc_fec_hora)
+--[
+SET statistics TIME ON
+DROP TABLE ultima_accion_x_tipo
+CREATE TABLE ultima_accion_x_tipo (
+  acc_per INTEGER,
+  acc_cta INTEGER,
+  acc_tac INTEGER,
+  tac_tipo_vinculo VARCHAR(1),
+  acc_fec_hora DATETIME
+) 
+
 INSERT INTO ultima_accion_x_tipo (acc_per,acc_cta,acc_tac,tac_tipo_vinculo, acc_fec_hora)
 SELECT
   0 [acc_per],
@@ -306,7 +459,7 @@ SELECT
   MAX(acc_fec_hora)
 FROM
   acciones
-  INNER JOIN cuentas ON acc_cta = cta_id
+  INNER JOIN #cuentas ON acc_cta = cta_id
   INNER JOIN tipos_acciones ON acc_tac = tac_id
 WHERE
   cta_cat = 2
@@ -328,7 +481,7 @@ SELECT
   MAX(acc_fec_hora)
 FROM
   acciones
-  INNER JOIN cuentas ON acc_per = cta_per
+  INNER JOIN #cuentas ON acc_per = cta_per
   INNER JOIN tipos_acciones ON acc_tac = tac_id
 WHERE
   cta_cat = 2
@@ -344,25 +497,29 @@ GROUP BY
 
 CREATE index ind_acc_ult_per ON ultima_accion_x_tipo (acc_per)
 CREATE index ind_acc_ult_cta ON ultima_accion_x_tipo (acc_cta)
---]--
---SELECT cta_cat,* FROM cuentas WHERE cta_per = 9400
---SELECT * FROM acciones WHERE acc_per = 9400 AND acc_tac = 46
 
-SELECT * FROM ultima_accion_x_tipo WHERE acc_fec_hora ='20200427' AND tac_tipo_vinculo = 'C'
-DROP TABLE ultima_accion_x_tipo
-CREATE TABLE ultima_accion_x_tipo (
-  acc_per INTEGER,
-  acc_cta INTEGER,
-  acc_tac INTEGER,
-  tac_tipo_vinculo VARCHAR(1),
-  acc_fec_hora DATETIME
-) 
-
-SELECT top 10 * FROM acciones WHERE acc_per >0
-SELECT * FROM tipos_acciones WHERE tac_tipo_vinculo = 'P' AND tac_baja_fecha IS NULL
+--]
 
 
 
-SELECT * FROM acciones WHERE acc_cta = 3119
+--[
 
-
+INSERT INTO
+  acciones (
+    acc_id         , acc_per     , acc_cta      , acc_fec_hora     , acc_tac        , 
+    acc_obs        , acc_estado  , acc_trp      , acc_res_fec_hora , acc_usu        , 
+    acc_obs_resp   , acc_fec_vto , acc_etg      , acc_esc          , acc_fec_esc    , 
+    acc_est        , acc_fec_est , acc_usu_resp , acc_deuda_a_venc , acc_deuda_venc , 
+    acc_eve        , acc_mov     , acc_costo    , acc_alta_fecha   , acc_modi_fecha , 
+    acc_baja_fecha , acc_usu_id  , acc_filler
+  )
+SELECT
+  acc_id         , acc_per     , acc_cta      , acc_fec_hora     , acc_tac        , 
+  acc_obs        , acc_estado  , acc_trp      , acc_res_fec_hora , acc_usu        , 
+  acc_obs_resp   , acc_fec_vto , acc_etg      , acc_esc          , acc_fec_esc    , 
+  acc_est        , acc_fec_est , acc_usu_resp , acc_deuda_a_venc , acc_deuda_venc , 
+  acc_eve        , acc_mov     , acc_costo    , acc_alta_fecha   , acc_modi_fecha , 
+  acc_baja_fecha , acc_usu_id  , acc_filler
+FROM #acciones
+--]
+SELECT * FROM acciones WHERE acc_fec_hora >= '20200427'

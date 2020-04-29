@@ -5,13 +5,24 @@ ALTER PROCEDURE [dbo].[wf_p_eval_eventos] (
 	@v_cod_ret     INT OUT
 )
 AS
+SELECT * FROM tipos_acciones
 /* 20200420 sergio vado espinoza: controla los valores valores del campo evp_id de la tabla wf_eventos_proceso para que no haga conflicto al
                                   insertar los registros a la tabla wf_eventos*/
 /* VAK: modificado el 2006-09-06 */
+--[
+DECLARE @fec_ini DATETIME = GETDATE()
+DECLARE	@v_fec_proceso DATETIME 
+DECLARE	@v_usu_id_in   INT
+DECLARE	@cat_id	       INT
+DECLARE @v_cod_ret     INT 
 
+DELETE FROM acciones WHERE acc_fec_hora >= '20200427'
+SET @v_fec_proceso = '20200427'
+SET @v_usu_id_in = 1
+SET @cat_id = 2
 
 SET NOCOUNT ON
-
+SELECT * FROM wf_print_out WHERE pto_proceso = 'EVE' AND pto_indicador IN ('I','F') AND pto_cat = 2 ORDER BY 2 
 DECLARE @prc_nombre_corto varchar(10)
 set @prc_nombre_corto='EVE'
 
@@ -94,7 +105,7 @@ UPDATE id_numeracion SET idn_ultimo_id = @max_eve_id WHERE idn_tabla = 'wf_event
 
 
 Select @v_cod_ret = @@error
-IF @v_cod_ret <> 0 RETURN -1
+--IF @v_cod_ret <> 0 RETURN -1
 
 DECLARE #cur_eve CURSOR FOR
 	SELECT 
@@ -286,6 +297,9 @@ BEGIN
 			END
 		END
 	END 
+
+
+
 	-- Fin Generación de Acciones 
 	ELSE
 	BEGIN
@@ -301,6 +315,10 @@ END
 CLOSE #cur_eve
 DEALLOCATE #cur_eve
 
+
+DECLARE @fec_fin DATETIME = GETDATE()
+SELECT datediff(second, @fec_fin, @fec_ini)
+--]
 --20181008 - Modificacion para ejecucion de procedimientos de eventos masivos
 
 INSERT wf_print_out SELECT @prc_nombre_corto,GETDATE(),@v_fec_proceso,'A','Recorriendo consecuentes Masivos.', @v_usu_id, Null, @cat_id  
