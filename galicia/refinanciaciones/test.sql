@@ -18,6 +18,7 @@ SET @v_usu_id=2
 */
 
 --[
+BEGIN try
 DECLARE @v_npr_id									int          	
 DECLARE @v_ope_list									VARCHAR(8000)	
 DECLARE @v_the_id									int          	
@@ -88,6 +89,7 @@ SET @v_usu_id=2
 	select item from dbo.Split(@v_ope_list,',') where Item <>''
 
 	select @cant_operaciones= COUNT(1) from #tmp_ng_prop_ope
+--sergio SELECT @cant_operaciones, * FROM #tmp_ng_prop_ope
 
 
   --SELECT * FROM wf_escenarios where esc_cod = 'MA1'
@@ -95,22 +97,22 @@ SET @v_usu_id=2
 	if OBJECT_ID('tempdb..#tmp_credenciales') is not null DROP TABLE #tmp_credenciales 
 	create table #tmp_credenciales (tmp_peo_id INT ) 
 
-  SELECT * FROM ma_prop_permisos WHERE peo_id IN (20,21,36,37,38)
+ -- SELECT * FROM ma_prop_permisos WHERE peo_id IN (20,21,36,37,38)
 	insert into #tmp_credenciales
-	select distinct peo_id,*
+	select distinct peo_id
 	FROM	ma_prop_permisos 
-			inner join ma_prop_perm_perf on ppp_peo=peo_id
+	  		inner join ma_prop_perm_perf on ppp_peo=peo_id
 	where peo_baja_fecha is null	
 	and ppp_baja_fecha is null
 	and peo_the = @v_the_id	
-	and peo_sistema=@v_sistema
+--20200429	and peo_sistema=@v_sistema 
 	AND @v_neto_refinanciar between peo_monto_desde and peo_monto_hasta
 	AND @v_cuotas between peo_cuotas_desde and peo_cuotas_hasta
 	and peo_tasa_interes_min <= @v_int_comp_tasa_fija 
 	and (peo_anticipo_monto <= @v_anticipo
 		 and peo_anticipo_porc <= @v_anticipo_porcen)
-	and (peo_quita_tot_monto >= @v_quita
-		 and peo_quita_tot_porc >= @v_quita_porcen )
+--20200429	and (peo_quita_tot_monto >= @v_quita
+--20200429		 and peo_quita_tot_porc >= @v_quita_porcen )
 	and (peo_quita_puni_monto >= @v_quita_puni
 		 and peo_quita_puni_porc >= @v_quita_puni_porcen )
 	and (peo_quita_comp_monto >= @v_quita_comp
@@ -243,7 +245,7 @@ add_tipos_segmentos  ase_nombre      ase_id       left join personas pr on pr.pe
 		   --select ERROR_MESSAGE()
 		   --select ERROR_LINE()
 		   --	INSERT INTO wf_print_out  SELECT 'TESTP', GETDATE(), GETDATE(), 'F', 'CATCH ', 1, NULL, 0  
-		   select @v_cod_ret=ERROR_NUMBER()
+		   --select @v_cod_ret=ERROR_NUMBER()
 		END CATCH   
 
 
@@ -262,12 +264,14 @@ add_tipos_segmentos  ase_nombre      ase_id       left join personas pr on pr.pe
 	--INSERT INTO wf_print_out  SELECT 'TESTP', GETDATE(), GETDATE(), 'F', '@tiene_permisos ' + CAST(ISNULL(@tiene_permisos,-1) AS VARCHAR), 1, NULL, 0  
 	select @tiene_permisos as tiene_permisos
 
+  --SELECT * FROM #tmp_ng_prop_ope
+
 END TRY  
 BEGIN CATCH  
    --select ERROR_MESSAGE()
    --select ERROR_LINE()
    --select @v_cod_ret=ERROR_NUMBER()
-   		SET @v_cod_ret=ERROR_NUMBER()    			
+   		--SET @v_cod_ret=ERROR_NUMBER()    			
 		SELECT     @ErrorMessage = ERROR_MESSAGE(),@ErrorSeverity = ERROR_SEVERITY(),@ErrorState = ERROR_STATE(); 					
 		RAISERROR (@ErrorMessage,@ErrorSeverity,@ErrorState); 
 END CATCH   
@@ -295,3 +299,46 @@ SET @v_anticipo=0
 SET @v_anticipo_porcen=0
 SET @v_usu_id=2
 */
+
+
+
+DECLARE #cur_operaciones CURSOR FOR 
+
+SELECT * FROM cuentas WHERE cta_id IN (590884, 3580239)
+
+	create table #tmp_ng_prop_ope (tmp_ope_id INT ) 
+  INSERT INTO #tmp_ng_prop_ope  SELECT 590884
+  INSERT INTO #tmp_ng_prop_ope  SELECT 3580239
+
+--  SELECT * FROM #tmp_ng_prop_ope
+SELECT 
+  count(distinct cta_id)
+FROM
+  #tmp_ng_prop_ope
+  INNER JOIN Cuentas ON tmp_ope_id=cta_id   
+  LEFT JOIN personas pr ON pr.per_id = cta_per 
+  LEFT JOIN add_segmentos sg ON  SUBSTRING(pr.per_filler,14,8) = sg.sgm_nombre_corto 
+  LEFT JOIN Add_tipos_segmentos ts ON ts.ase_nombre_corto = SUBSTRING(sg.sgm_filler,11,1)  
+WHERE 
+  cta_baja_fecha IS NULL 
+  AND ase_id IN  (SELECT
+                    vaf_valor 
+                  FROM 
+                    ma_valores_filtros
+									WHERE 
+                    vaf_baja_fecha IS NULL 
+                    AND vaf_peo = 39 
+                    AND vaf_hxf = 2
+                  ) 
+
+SELECT
+  vaf_valor, * 
+FROM 
+  ma_valores_filtros
+WHERE 
+  vaf_baja_fecha IS NULL 
+  AND vaf_peo = 39 
+  AND vaf_hxf = 2
+
+
+  EXEC aux_contenidosp ma_valores_filtros
