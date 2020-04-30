@@ -523,3 +523,7 @@ SELECT
 FROM #acciones
 --]
 SELECT * FROM acciones WHERE acc_fec_hora >= '20200427'
+
+select * from acciones where acc_fec_hora >= '20200427' order by acc_per, acc_cta, acc_tac, acc_estado, acc_etg, acc_esc, acc_est, acc_fec_esc, acc_fec_est, acc_deuda_venc, acc_deuda_a_venc, acc_eve
+--
+--
